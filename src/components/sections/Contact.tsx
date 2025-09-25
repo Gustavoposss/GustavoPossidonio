@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Mail, MapPin, Github, Linkedin, Send, CheckCircle } from 'lucide-react';
+import { Mail, MapPin, Github, Linkedin, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { personalInfo } from '../../data/portfolio-simple';
+import emailjs from '@emailjs/browser';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -15,6 +16,8 @@ const Contact = () => {
     message: ''
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -24,18 +27,47 @@ const Contact = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aqui você pode adicionar lógica para enviar o email
-    // Por enquanto, vamos apenas simular o envio
-    console.log('Formulário enviado:', formData);
-    setIsSubmitted(true);
-    
-    // Reset do formulário após 3 segundos
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({ name: '', email: '', message: '' });
-    }, 3000);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const templateParams = {
+        title: `Nova mensagem de ${formData.name}`,
+        name: formData.name,
+        time: new Date().toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        message: formData.message,
+        email: formData.email
+      };
+
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        templateParams,
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      );
+
+
+      setIsSubmitted(true);
+      
+      // Reset do formulário após 3 segundos
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({ name: '', email: '', message: '' });
+      }, 3000);
+    } catch (error) {
+      console.error('Erro ao enviar email:', error);
+      setError('Erro ao enviar mensagem. Tente novamente em alguns instantes.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -145,6 +177,13 @@ const Contact = () => {
                     </p>
                   </div>
                 ) : (
+                  <>
+                    {error && (
+                      <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                        <p className="text-red-700 text-sm">{error}</p>
+                      </div>
+                    )}
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Nome */}
                     <div className="space-y-2">
@@ -202,11 +241,22 @@ const Contact = () => {
                       type="submit" 
                       size="lg" 
                       className="w-full bg-primary hover:bg-primary/90"
+                      disabled={isLoading}
                     >
-                      <Send className="h-4 w-4 mr-2" />
-                      Enviar Mensagem
+                      {isLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-2" />
+                          Enviar Mensagem
+                        </>
+                      )}
                     </Button>
                   </form>
+                  </>
                 )}
               </CardContent>
             </Card>
